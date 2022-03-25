@@ -73,7 +73,6 @@ text = open_and_read_file(filenames)
 chains = make_chains(text)
 
 
-
 client = discord.Client() ##some discord method to create a client
 
 @client.event ##at a specified event
