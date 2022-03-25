@@ -6,85 +6,102 @@ import discord
 from random import choice
 
 
-
 client_token = os.environ.get('LAUREL_DISCORD_TOKEN')
 
+########### MARKOV FUNCTIONS ######################
+def open_and_read_file(file_path):
+    """Take file path as string; return text as string.
 
+    Takes a string that is a file path, opens the file, and turns
+    the file's contents as one string of text.
+    """
+    text_source = open(file_path)
+    file_as_string = text_source.read()
+    file_as_string = file_as_string.replace("\n", " ")
 
-def open_and_read_file(filenames):
-    """Take list of files. Open them, read them, and return one long string."""
-
-    body = ''
-    for filename in filenames:
-        text_file = open(filename)
-        body = body + text_file.read()
-        text_file.close()
-
-    return body
-
+    return file_as_string
 
 def make_chains(text_string):
-    """Take input text as string; return dictionary of Markov chains."""
-
-    chains = {}
 
     words = text_string.split()
-    for i in range(len(words) - 2):
-        key = (words[i], words[i + 1])
-        value = words[i + 2]
+    chains = {}
 
-        if key not in chains:
-            chains[key] = []
+    for i in range(len(words)):
+        if i == 0:
+            continue
+        
+        word1 = words[i-1]
+        word2 = words[i]
+        if i == len(words) - 1:
+            following = None
+        else:
+            following = words[i+1]
 
-        chains[key].append(value)
-
+        chains[(word1, word2)] = chains.get((word1, word2), []) + [following]
+    
     return chains
 
 
 def make_text(chains):
-    """Take dictionary of Markov chains; return random text."""
+    """Return text from chains."""
+    
+    words = []
+    keys_list = list(chains.keys())
 
-    keys = list(chains.keys())
-    key = choice(keys)
+    current_key = choice(keys_list)
 
-    words = [key[0], key[1]]
-    while key in chains:
-        # Keep looping until we have a key that isn't in the chains
-        # (which would mean it was the end of our original text).
+    while True:
+        
+        words.append(current_key[0])
+        if current_key[0].endswith("."):
+            break
+        next_word = choice(chains[current_key])
+        
+        
+        if next_word == None:
+            words.append(current_key[1])
+            break
 
-        # Note that for long texts (like a full book), this might mean
-        # it would run for a very long time.
+        new_key = (current_key[1], next_word)
+        
+        current_key = new_key 
+        
 
-        word = choice(chains[key])
-        words.append(word)
-        key = (key[1], word)
 
     return ' '.join(words)
 
+def markov_text_maker(input_path):
+    input_text = open_and_read_file(input_path)
+    chains = make_chains(input_text)
+    markov_text = make_text(chains)
 
-# Get the filenames from the user through a command line prompt, ex:
-# python markov.py green-eggs.txt shakespeare.txt
-filenames = sys.argv[1:]
+    return markov_text
 
-# Open the files and turn them into one long string
-text = open_and_read_file(filenames)
+################# AVAILABLE INPUT FILES ####################
+green_eggs = 'green-eggs.txt'
+george = "george_carlin.txt"
+jaden = "jaden-tweets.txt"
 
-# Get a Markov chain
-chains = make_chains(text)
 
+##########################
 
 client = discord.Client() ##some discord method to create a client
 
 @client.event ##at a specified event
 async def on_ready(): ##event is log in
-    print('We have logged in as {0.user}'.format(client))##
+    print('We have logged in as {0.user}'.format(client))
 
 @client.event
 async def on_message(message): ##event is receiving a message
     if message.author == client.user: ##checks if the client sent the message to itself
         return
 
-    if message.content.startswith('$hello'):##only responds to outside messages
+    if message.content.startswith('hello'): ##only responds to outside messages
         await message.channel.send('Hello!')
+    
+    if message.content.startswith('$laurel'): 
+        await message.channel.send(markov_text_maker(green_eggs)) #runs the markov maker as input
 
-client.run(os.environ.get('LAUREL_DISCORD_TOKEN')) ##defines the client with a specific token
+
+
+# client.run(os.environ.get('LAUREL_DISCORD_TOKEN')) 
